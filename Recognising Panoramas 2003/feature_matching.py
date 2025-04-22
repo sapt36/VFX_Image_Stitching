@@ -36,8 +36,8 @@ def match_features(desc1, desc2, k=4):
 
 if __name__ == "__main__":
     # 讀取兩張影像
-    img1 = cv2.imread("../test_images/prtn01.jpg")
-    img2 = cv2.imread("../test_images/prtn00.jpg")
+    img1 = cv2.imread("../test_images_parrington/prtn01.jpg")
+    img2 = cv2.imread("../test_images_parrington/prtn00.jpg")
     if img1 is None or img2 is None:
         print("無法讀取輸入影像，請檢查路徑。")
         exit(1)

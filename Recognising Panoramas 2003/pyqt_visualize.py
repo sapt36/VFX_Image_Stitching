@@ -145,6 +145,6 @@ class SIFTVisualizer(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = SIFTVisualizer("../test_images/prtn01.jpg", sigma=1.6, assumed_blur=0.5)
+    window = SIFTVisualizer("../test_images_parrington/prtn01.jpg", sigma=1.6, assumed_blur=0.5)
     window.show()
     sys.exit(app.exec_())
