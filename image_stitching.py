@@ -245,7 +245,7 @@ def run_panorama():
     if len(img_paths) == 0:
         print("在 pano.txt 中找不到任何有效條目，請檢查格式。")
         return
-    print("已讀取 %d 張影像路徑及其焦距。" % len(img_paths))
+    print("已從pano.txt讀取 %d 張影像路徑及其焦距。" % len(img_paths))
 
     start = time.time()
     images = []
@@ -268,6 +268,7 @@ def run_panorama():
             continue
         cyl = cylindrical_projection(img, f)
         cyl_imgs.append(cyl)
+    print("圓柱投影完成，總共 %d 張影像。" % len(cyl_imgs))
 
     # 第一次迴圈：計算相鄰影像的 shift，但不直接拼接
     # shift_list[i] 表示第 i+1 張 (cyl_imgs[i+1]) 相對第 i 張 (cyl_imgs[i]) 的 (dx, dy)
