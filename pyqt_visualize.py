@@ -10,6 +10,9 @@ from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sift_impl
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 def cvimg_to_qpixmap(img, max_width=None, max_height=None):
     """將 OpenCV 影像 (灰階或 BGR) 轉為 Qt QPixmap，並可選擇縮放至最大尺寸"""
@@ -32,6 +35,7 @@ def cvimg_to_qpixmap(img, max_width=None, max_height=None):
             Qt.SmoothTransformation
         )
     return pix
+
 
 class SIFTVisualizer(QMainWindow):
     def __init__(self, image_path, sigma=1.6, assumed_blur=0.5):
