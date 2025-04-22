@@ -245,6 +245,7 @@ def run_panorama():
     if len(img_paths) == 0:
         print("在 pano.txt 中找不到任何有效條目，請檢查格式。")
         return
+    print("已讀取 %d 張影像路徑及其焦距。" % len(img_paths))
 
     start = time.time()
     images = []
@@ -258,7 +259,6 @@ def run_panorama():
             images.append(None)
             continue
         images.append(img)
-    print("讀取影像完成，總共 %d 張。" % len(images))
 
     # 先把每張做圓柱投影
     cyl_imgs = []
@@ -277,7 +277,7 @@ def run_panorama():
     mosaic_height_list = [cyl_imgs[0].shape[0]]  # 記錄拼接後實際高度(可選)
 
     second = time.time()
-    print("Timer: 讀取影像 %.2f 秒" % (second - start))
+    print("讀取影像、圓柱投影、計算drift Timer: %.2f 秒" % (second - start))
 
     #############################
     # 5) End to end alignment (去除圖片drift高低差問題)
@@ -302,7 +302,7 @@ def run_panorama():
         # 這裡可選擇記錄「拼好之後的高度」，但要真的拼才知道。範例就先略過
 
     third = time.time()
-    print("Timer: 計算 shift %.2f 秒" % (third - second))
+    print("SIFT運算 Timer: %.2f 秒" % (third - second))
     # 計算「累計」移動 y
     # acc_shifts[i] = 第 i 張影像(相對於第 0 張) 的累計 shift
     # 其中 acc_shifts[0] = (0,0)
@@ -351,7 +351,7 @@ def run_panorama():
         shift_xy = new_shift_list[i - 1]
         pair = matched_pairs[i - 1]
         mosaic = blend_two_images(shift_xy, pair, mosaic, cyl_imgs[i])
-        print("拼接中：第 %d / %d 張..." % (i, N - 1))
+        print("實際拼接：第 %d / %d 張..." % (i, N - 1))
 
     result_img = rectangle_crop(mosaic)
     save_path = os.path.join(folder_path, "panoroma.jpg")
