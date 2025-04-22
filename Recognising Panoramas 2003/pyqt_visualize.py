@@ -42,15 +42,15 @@ class SIFTVisualizer(QMainWindow):
         self.orig_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         img = self.orig_image.astype('float32')
 
-        self.base_image = sift_impl.generateBaseImage(img, sigma=self.sigma, assumed_blur=self.assumed_blur)
-        num_octaves = sift_impl.computeNumberOfOctaves(self.base_image.shape)
-        kernels = sift_impl.generateGaussianKernels(self.sigma, num_intervals=3)
-        self.gaussian_images = sift_impl.generateGaussianImages(self.base_image, num_octaves, kernels)
-        self.dog_images = sift_impl.generateDoGImages(self.gaussian_images)
-        raw_kp = sift_impl.findScaleSpaceExtrema(self.gaussian_images, self.dog_images, num_intervals=3, sigma=self.sigma, border=5)
-        no_dup = sift_impl.removeDuplicateKeypoints(raw_kp)
-        self.kp_converted = sift_impl.convertKeypointsToInputImageSize(no_dup)
-        self.descriptors = sift_impl.generateDescriptors(self.kp_converted, self.gaussian_images)
+        self.base_image = sift_impl.generate_base_image(img, sigma=self.sigma, assumed_blur=self.assumed_blur)
+        num_octaves = sift_impl.compute_number_of_octaves(self.base_image.shape)
+        kernels = sift_impl.generate_gaussian_kernels(self.sigma, num_intervals=3)
+        self.gaussian_images = sift_impl.generate_gaussian_images(self.base_image, num_octaves, kernels)
+        self.dog_images = sift_impl.generate_DoG_images(self.gaussian_images)
+        raw_kp = sift_impl.find_scale_space_extrema(self.gaussian_images, self.dog_images, num_intervals=3, sigma=self.sigma, border=5)
+        no_dup = sift_impl.remove_duplicate_keypoints(raw_kp)
+        self.kp_converted = sift_impl.convert_keypoints_to_input_image_size(no_dup)
+        self.descriptors = sift_impl.generate_descriptors(self.kp_converted, self.gaussian_images)
         self.raw_kp = raw_kp
 
         # 建立分頁
@@ -113,21 +113,31 @@ class SIFTVisualizer(QMainWindow):
     def create_keypoints_tab(self, keypoints, title, img=None):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        # 顯示標題與參數
-        title_lbl = QLabel(f"{title}\nσ={self.sigma}, assumed_blur={self.assumed_blur}")
+
+        # 顯示標題、參數、以及鍵點數
+        num_kp = len(keypoints)  # 取得鍵點數量
+        title_lbl = QLabel(
+            f"{title}\n"
+            f"σ={self.sigma}, assumed_blur={self.assumed_blur}\n"
+            f"Keypoints: {num_kp}"
+        )
         title_lbl.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_lbl)
-        # 畫鍵點
+
+        # 畫鍵點 (若img沒指定，就用 self.base_image)
         draw_img = img if img is not None else self.base_image
-        disp = cv2.drawKeypoints(
-            (draw_img / np.max(draw_img) * 255).astype('uint8'),
-            keypoints, None, flags=cv2.DrawMatchesFlags_DEFAULT
-        )
+        # 防止 draw_img 為 float或過大時無法正常畫
+        disp_img = (draw_img / np.max(draw_img) * 255).astype('uint8')
+        disp = cv2.drawKeypoints(disp_img, keypoints, None,
+                                 flags=cv2.DrawMatchesFlags_DEFAULT)
+
+        # 顯示鍵點影像
         label = QLabel()
         pix = cvimg_to_qpixmap(disp, max_width=800, max_height=600)
         label.setPixmap(pix)
         label.setAlignment(Qt.AlignCenter)
         layout.addWidget(label)
+
         layout.addStretch()
         return widget
 
