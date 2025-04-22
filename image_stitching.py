@@ -1,426 +1,403 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import os
 import cv2
-import random
-
-
-class Stitcher:
-    def __init__(self):
-        pass
-
-    def stitch(self, imgs, blending_mode="linearBlending", ratio=0.75):
-        '''
-            The main method to stitch image
-        '''
-        img_left, img_right = imgs
-        (hl, wl) = img_left.shape[:2]
-        (hr, wr) = img_right.shape[:2]
-        print("Left img size (", hl, "*", wl, ")")
-        print("Right img size (", hr, "*", wr, ")")
-
-        # Step1 - extract the keypoints and features by SIFT detector and descriptor
-        print("Step1 - Extract the keypoints and features by SIFT detector and descriptor...")
-        kps_l, features_l = self.detectAndDescribe(img_left)
-        kps_r, features_r = self.detectAndDescribe(img_right)
-
-        # Step2 - extract the match point with threshold (David Lowe’s ratio test)
-        print("Step2 - Extract the match point with threshold (David Lowe’s ratio test)...")
-        matches_pos = self.matchKeyPoint(kps_l, kps_r, features_l, features_r, ratio)
-        print("The number of matching points:", len(matches_pos))
-
-        # Step2 - draw the img with matching point and their connection line
-        self.drawMatches([img_left, img_right], matches_pos)
-
-        # Step3 - fit the homography model with RANSAC algorithm
-        print("Step3 - Fit the best homography model with RANSAC algorithm...")
-        HomoMat = self.fitHomoMat(matches_pos)
-
-        # Step4 - Warp image to create panoramic image
-        print("Step4 - Warp image to create panoramic image...")
-        warp_img = self.warp([img_left, img_right], HomoMat, blending_mode)
-
-        return warp_img
-
-    def detectAndDescribe(self, img):
-        '''
-        The Detector and Descriptor
-        '''
-        import sift
-        # SIFT detector and descriptor
-        kps, features = sift.computeKeypointsAndDescriptors(img)
-
-        return kps, features
-
-    def matchKeyPoint(self, kps_l, kps_r, features_l, features_r, ratio):
-        '''
-            Match the Keypoints beteewn two image
-        '''
-        Match_idxAndDist = []  # min corresponding index, min distance, seccond min corresponding index, second min distance
-        for i in range(len(features_l)):
-            min_IdxDis = [-1, np.inf]  # record the min corresponding index, min distance
-            secMin_IdxDis = [-1, np.inf]  # record the second corresponding min index, min distance
-            for j in range(len(features_r)):
-                dist = np.linalg.norm(features_l[i] - features_r[j])
-                if (min_IdxDis[1] > dist):
-                    secMin_IdxDis = np.copy(min_IdxDis)
-                    min_IdxDis = [j, dist]
-                elif (secMin_IdxDis[1] > dist and secMin_IdxDis[1] != min_IdxDis[1]):
-                    secMin_IdxDis = [j, dist]
-
-            Match_idxAndDist.append([min_IdxDis[0], min_IdxDis[1], secMin_IdxDis[0], secMin_IdxDis[1]])
-
-        # ratio test as per Lowe's paper
-        goodMatches = []
-        for i in range(len(Match_idxAndDist)):
-            if (Match_idxAndDist[i][1] <= Match_idxAndDist[i][3] * ratio):
-                goodMatches.append((i, Match_idxAndDist[i][0]))
-
-        goodMatches_pos = []
-        for (idx, correspondingIdx) in goodMatches:
-            psA = (int(kps_l[idx].pt[0]), int(kps_l[idx].pt[1]))
-            psB = (int(kps_r[correspondingIdx].pt[0]), int(kps_r[correspondingIdx].pt[1]))
-            goodMatches_pos.append([psA, psB])
-
-        return goodMatches_pos
-
-    def drawMatches(self, imgs, matches_pos):
-        '''
-            Draw the match points img with keypoints and connection line
-        '''
-
-        # initialize the output visualization image
-        img_left, img_right = imgs
-        (hl, wl) = img_left.shape[:2]
-        (hr, wr) = img_right.shape[:2]
-        # If img_left is grayscale, convert it to a 3-channel image
-        if len(img_left.shape) == 2:
-            img_left = cv2.cvtColor(img_left, cv2.COLOR_GRAY2BGR)
-
-        # If img_right is grayscale, convert it to a 3-channel image
-        if len(img_right.shape) == 2:
-            img_right = cv2.cvtColor(img_right, cv2.COLOR_GRAY2BGR)
-        vis = np.zeros((max(hl, hr), wl + wr, 3), dtype="uint8")
-        vis[0:hl, 0:wl] = img_left
-        vis[0:hr, wl:] = img_right
-
-        # Draw the match
-        for (img_left_pos, img_right_pos) in matches_pos:
-            pos_l = img_left_pos
-            pos_r = img_right_pos[0] + wl, img_right_pos[1]
-            cv2.circle(vis, pos_l, 3, (0, 0, 255), 1)
-            cv2.circle(vis, pos_r, 3, (0, 255, 0), 1)
-            cv2.line(vis, pos_l, pos_r, (255, 0, 0), 1)
-
-        # return the visualization
-        plt.figure(4)
-        plt.title("img with matching points")
-        plt.imshow(vis[:, :, ::-1])
-        # cv2.imwrite("Feature matching img/matching.jpg", vis)
-
-        return vis
-
-    def fitHomoMat(self, matches_pos):
-        '''
-            Fit the best homography model with RANSAC algorithm - noBlending、linearBlending、linearBlendingWithConstant
-        '''
-        dstPoints = []  # i.e. left image(destination image)
-        srcPoints = []  # i.e. right image(source image)
-        for dstPoint, srcPoint in matches_pos:
-            dstPoints.append(list(dstPoint))
-            srcPoints.append(list(srcPoint))
-        dstPoints = np.array(dstPoints)
-        srcPoints = np.array(srcPoints)
-
-        homography = Homography()
-
-        # RANSAC algorithm, selecting the best fit homography
-        NumSample = len(matches_pos)
-        threshold = 5.0
-        NumIter = 8000
-        NumRamdomSubSample = 4
-        MaxInlier = 0
-        Best_H = None
-
-        for run in range(NumIter):
-            SubSampleIdx = random.sample(range(NumSample), NumRamdomSubSample)  # get the Index of ramdom sampling
-            H = homography.solve_homography(srcPoints[SubSampleIdx], dstPoints[SubSampleIdx])
-
-            # find the best Homography have the the maximum number of inlier
-            NumInlier = 0
-            for i in range(NumSample):
-                if i not in SubSampleIdx:
-                    concateCoor = np.hstack((srcPoints[i], [1]))  # add z-axis as 1
-                    dstCoor = H @ concateCoor.T  # calculate the coordination after transform to destination img
-                    if dstCoor[2] <= 1e-8:  # avoid divide zero number, or too small number cause overflow
-                        continue
-                    dstCoor = dstCoor / dstCoor[2]
-                    if (np.linalg.norm(dstCoor[:2] - dstPoints[i]) < threshold):
-                        NumInlier = NumInlier + 1
-            if (MaxInlier < NumInlier):
-                MaxInlier = NumInlier
-                Best_H = H
-
-        print("The Number of Maximum Inlier:", MaxInlier)
-
-        return Best_H
-
-    def warp(self, imgs, HomoMat, blending_mode):
-        '''
-           Warp image to create panoramic image
-           There are three different blending method - noBlending、linearBlending、linearBlendingWithConstant
-        '''
-        img_left, img_right = imgs
-        (hl, wl) = img_left.shape[:2]
-        (hr, wr) = img_right.shape[:2]
-        stitch_img = np.zeros((max(hl, hr), wl + wr, 3),
-                              dtype="int")  # create the (stitch)big image accroding the imgs height and width
-
-        if (blending_mode == "noBlending"):
-            stitch_img[:hl, :wl] = img_left
-
-        # Transform Right image(the coordination of right image) to destination iamge(the coordination of left image) with HomoMat
-        inv_H = np.linalg.inv(HomoMat)
-        for i in range(stitch_img.shape[0]):
-            for j in range(stitch_img.shape[1]):
-                coor = np.array([j, i, 1])
-                img_right_coor = inv_H @ coor  # the coordination of right image
-                img_right_coor /= img_right_coor[2]
-
-                # you can try like nearest neighbors or interpolation
-                y, x = int(round(img_right_coor[0])), int(round(img_right_coor[1]))  # y for width, x for height
-
-                # if the computed coordination not in the (hegiht, width) of right image, it's not need to be process
-                if (x < 0 or x >= hr or y < 0 or y >= wr):
-                    continue
-                # else we need the tranform for this pixel
-                stitch_img[i, j] = img_right[x, y]
-
-        # create the Blender object to blending the image
-        blender = Blender()
-        if (blending_mode == "linearBlending"):
-            stitch_img = blender.linearBlending([img_left, stitch_img])
-        elif (blending_mode == "linearBlendingWithConstant"):
-            stitch_img = blender.linearBlendingWithConstantWidth([img_left, stitch_img])
-
-        # remove the black border
-        stitch_img = self.removeBlackBorder(stitch_img)
-
-        return stitch_img
-
-    def removeBlackBorder(self, img):
-        '''
-        Remove img's the black border
-        '''
-        h, w = img.shape[:2]
-        reduced_h, reduced_w = h, w
-        # right to left
-        for col in range(w - 1, -1, -1):
-            all_black = True
-            for i in range(h):
-                if (np.count_nonzero(img[i, col]) > 0):
-                    all_black = False
-                    break
-            if (all_black == True):
-                reduced_w = reduced_w - 1
-
-        # bottom to top
-        for row in range(h - 1, -1, -1):
-            all_black = True
-            for i in range(reduced_w):
-                if (np.count_nonzero(img[row, i]) > 0):
-                    all_black = False
-                    break
-            if (all_black == True):
-                reduced_h = reduced_h - 1
-
-        return img[:reduced_h, :reduced_w]
-
-
-class Blender:
-    def linearBlending(self, imgs):
-        '''
-        linear Blending(also known as Feathering)
-        '''
-        img_left, img_right = imgs
-        (hl, wl) = img_left.shape[:2]
-        (hr, wr) = img_right.shape[:2]
-        img_left_mask = np.zeros((hr, wr), dtype="int")
-        img_right_mask = np.zeros((hr, wr), dtype="int")
-
-        # find the left image and right image mask region(Those not zero pixels)
-        for i in range(hl):
-            for j in range(wl):
-                if np.count_nonzero(img_left[i, j]) > 0:
-                    img_left_mask[i, j] = 1
-        for i in range(hr):
-            for j in range(wr):
-                if np.count_nonzero(img_right[i, j]) > 0:
-                    img_right_mask[i, j] = 1
-
-        # find the overlap mask(overlap region of two image)
-        overlap_mask = np.zeros((hr, wr), dtype="int")
-        for i in range(hr):
-            for j in range(wr):
-                if (np.count_nonzero(img_left_mask[i, j]) > 0 and np.count_nonzero(img_right_mask[i, j]) > 0):
-                    overlap_mask[i, j] = 1
-
-        # Plot the overlap mask
-        plt.figure(21)
-        plt.title("overlap_mask")
-        plt.imshow(overlap_mask.astype(int), cmap="gray")
-
-        # compute the alpha mask to linear blending the overlap region
-        alpha_mask = np.zeros((hr, wr))  # alpha value depend on left image
-        for i in range(hr):
-            minIdx = maxIdx = -1
-            for j in range(wr):
-                if (overlap_mask[i, j] == 1 and minIdx == -1):
-                    minIdx = j
-                if (overlap_mask[i, j] == 1):
-                    maxIdx = j
-
-            if (minIdx == maxIdx):  # represent this row's pixels are all zero, or only one pixel not zero
-                continue
-
-            decrease_step = 1 / (maxIdx - minIdx)
-            for j in range(minIdx, maxIdx + 1):
-                alpha_mask[i, j] = 1 - (decrease_step * (j - minIdx))
-
-        linearBlending_img = np.copy(img_right)
-        linearBlending_img[:hl, :wl] = np.copy(img_left)
-        # linear blending
-        for i in range(hr):
-            for j in range(wr):
-                if (np.count_nonzero(overlap_mask[i, j]) > 0):
-                    linearBlending_img[i, j] = alpha_mask[i, j] * img_left[i, j] + (1 - alpha_mask[i, j]) * img_right[
-                        i, j]
-
-        return linearBlending_img
-
-    def linearBlendingWithConstantWidth(self, imgs):
-        '''
-        linear Blending with Constat Width, avoiding ghost region
-        # you need to determine the size of constant with
-        '''
-        img_left, img_right = imgs
-        (hl, wl) = img_left.shape[:2]
-        (hr, wr) = img_right.shape[:2]
-        img_left_mask = np.zeros((hr, wr), dtype="int")
-        img_right_mask = np.zeros((hr, wr), dtype="int")
-        constant_width = 3  # constant width
-
-        # find the left image and right image mask region(Those not zero pixels)
-        for i in range(hl):
-            for j in range(wl):
-                if np.count_nonzero(img_left[i, j]) > 0:
-                    img_left_mask[i, j] = 1
-        for i in range(hr):
-            for j in range(wr):
-                if np.count_nonzero(img_right[i, j]) > 0:
-                    img_right_mask[i, j] = 1
-
-        # find the overlap mask(overlap region of two image)
-        overlap_mask = np.zeros((hr, wr), dtype="int")
-        for i in range(hr):
-            for j in range(wr):
-                if (np.count_nonzero(img_left_mask[i, j]) > 0 and np.count_nonzero(img_right_mask[i, j]) > 0):
-                    overlap_mask[i, j] = 1
-
-        # compute the alpha mask to linear blending the overlap region
-        alpha_mask = np.zeros((hr, wr))  # alpha value depend on left image
-        for i in range(hr):
-            minIdx = maxIdx = -1
-            for j in range(wr):
-                if (overlap_mask[i, j] == 1 and minIdx == -1):
-                    minIdx = j
-                if (overlap_mask[i, j] == 1):
-                    maxIdx = j
-
-            if (minIdx == maxIdx):  # represent this row's pixels are all zero, or only one pixel not zero
-                continue
-
-            decrease_step = 1 / (maxIdx - minIdx)
-
-            # Find the middle line of overlapping regions, and only do linear blending to those regions very close to the middle line.
-            middleIdx = int((maxIdx + minIdx) / 2)
-
-            # left
-            for j in range(minIdx, middleIdx + 1):
-                if (j >= middleIdx - constant_width):
-                    alpha_mask[i, j] = 1 - (decrease_step * (j - minIdx))
-                else:
-                    alpha_mask[i, j] = 1
-            # right
-            for j in range(middleIdx + 1, maxIdx + 1):
-                if (j <= middleIdx + constant_width):
-                    alpha_mask[i, j] = 1 - (decrease_step * (j - minIdx))
-                else:
-                    alpha_mask[i, j] = 0
-
-        linearBlendingWithConstantWidth_img = np.copy(img_right)
-        linearBlendingWithConstantWidth_img[:hl, :wl] = np.copy(img_left)
-        # linear blending with constant width
-        for i in range(hr):
-            for j in range(wr):
-                if (np.count_nonzero(overlap_mask[i, j]) > 0):
-                    linearBlendingWithConstantWidth_img[i, j] = alpha_mask[i, j] * img_left[i, j] + (
-                                1 - alpha_mask[i, j]) * img_right[i, j]
-
-        return linearBlendingWithConstantWidth_img
-
-
-class Homography:
-    def solve_homography(self, P, m):
-        """
-        Solve homography matrix
-
-        Args:
-            P:  Coordinates of the points in the original plane,
-            m:  Coordinates of the points in the target plane
-
-
-        Returns:
-            H: Homography matrix
-        """
-        try:
-            A = []
-            for r in range(len(P)):
-                # print(m[r, 0])
-                A.append([-P[r, 0], -P[r, 1], -1, 0, 0, 0, P[r, 0] * m[r, 0], P[r, 1] * m[r, 0], m[r, 0]])
-                A.append([0, 0, 0, -P[r, 0], -P[r, 1], -1, P[r, 0] * m[r, 1], P[r, 1] * m[r, 1], m[r, 1]])
-
-            u, s, vt = np.linalg.svd(A)  # Solve s ystem of linear equations Ah = 0 using SVD
-            # pick H from last line of vt
-            H = np.reshape(vt[8], (3, 3))
-            # normalization, let H[2,2] equals to 1
-            H = (1 / H.item(8)) * H
-        except:
-            print("Error occur!")
-
-        return H
-
+import numpy as np
+import math
+import time
+from sift_impl import computeKeypointsAndDescriptors
+
+
+#############################
+# 0) pano.txt 讀取
+#############################
+def read_pano_data(pano_file_path):
+    """
+    讀取 pano.txt 資料
+
+    流程：
+      1. 尋找包含 .jpg 或 .png 的行 → 當作影像路徑
+      2. 下一行若可轉 float → 作為該影像的焦距(像素)
+      3. 其餘行 (包含空白或矩陣) 皆略過
+    回傳：
+      images  (list): 影像路徑清單
+      focuses (list): 焦距數值清單
+    """
+    images = []
+    focuses = []
+    pending_img = None
+
+    with open(pano_file_path, 'r', encoding='utf-8') as f:
+        all_lines = f.read().splitlines()
+
+    for text_line in all_lines:
+        line_stripped = text_line.strip().lower()
+        if ('.jpg' in line_stripped) or ('.png' in line_stripped):
+            pending_img = text_line.strip()  # 暫存完整字串(可能大小寫混合)
+        else:
+            # 若此行可能是焦距 (float)
+            if (' ' not in line_stripped) and (len(line_stripped) > 0):
+                try:
+                    val = float(line_stripped)
+                    if pending_img is not None:
+                        images.append(pending_img)
+                        focuses.append(val)
+                        pending_img = None
+                except ValueError:
+                    pass
+    return images, focuses
+
+
+#############################
+# 1) SIFT + RANSAC (feature detection and matching)
+#############################
+def compute_shift_sift(imgA, imgB, ransac_thr=3, desc_thresh=25000):
+    """
+    使用自製 SIFT 進行 Keypoints + Descriptors，
+    再用簡易最近鄰配對 + RANSAC 找 (dx,dy).
+    :param desc_thresh: 用來判斷特徵向量距離（L2距離）的閾值
+    """
+    # 1) 計算 SIFT Keypoints & Descriptors
+    kpsA, descA = computeKeypointsAndDescriptors(imgA)
+    kpsB, descB = computeKeypointsAndDescriptors(imgB)
+
+    # 2) 做最近鄰匹配
+    matches = []
+    for i in range(len(descA)):
+        best_dist = float('inf')
+        best_idx = -1
+        for j in range(len(descB)):
+            # SIFT desc => 128維
+            d = descA[i] - descB[j]
+            dist = np.dot(d,d)  # L2距離平方
+            if dist < best_dist:
+                best_dist = dist
+                best_idx = j
+        if best_dist < desc_thresh and best_idx != -1:
+            # 建立 ( (xA,yA), (xB,yB) ) 形式
+            (xA, yA) = kpsA[i].pt
+            (xB, yB) = kpsB[best_idx].pt
+            # 轉成整數或保留 float 也可
+            matches.append(((xA, yA), (xB, yB)))
+
+    # 3) RANSAC => best shift
+    best_move, best_pair = simple_ransac(matches, dist_sq_thresh=ransac_thr)
+    return best_move, best_pair
+
+
+def simple_ransac(matches, dist_sq_thresh=3):
+    """
+    用平移 (dx, dy) 做投票式 RANSAC
+    """
+    if len(matches) == 0:
+        return (0, 0), None
+    move_candidates = []
+    for (a, b) in matches:
+        dx = a[0] - b[0]
+        dy = a[1] - b[1]
+        move_candidates.append((dx, dy))
+
+    best_score = -1
+    best_move = (0, 0)
+    best_pair = None
+
+    for i, candi in enumerate(move_candidates):
+        dx_ref, dy_ref = candi
+        deltas = [(mc[0] - dx_ref, mc[1] - dy_ref) for mc in move_candidates]
+        dist_sq_list = [d[0] ** 2 + d[1] ** 2 for d in deltas]
+        vote_count = np.count_nonzero(np.array(dist_sq_list) < dist_sq_thresh)
+        if vote_count > best_score:
+            best_score = vote_count
+            best_move = candi
+            best_pair = matches[i]
+    return best_move, best_pair
+
+
+#############################
+# 2) 影像投影、拼接(image matching and blending)
+#############################
+def cylindrical_projection(img_bgr, focal_len):
+    """
+    將影像做圓柱投影
+    """
+    h, w = img_bgr.shape[:2]
+    center_y = h // 2
+    center_x = w // 2
+    output = np.zeros_like(img_bgr, dtype=np.uint8)
+
+    for yy in range(h):
+        for xx in range(w):
+            x_dist = xx - center_x
+            y_dist = yy - center_y
+            x_mapped = round(focal_len * math.atan(x_dist / focal_len)) + center_x
+            denom = math.sqrt(x_dist**2 + focal_len**2)
+            y_mapped = round(focal_len * (y_dist / denom)) + center_y
+
+            if 0 <= x_mapped < w and 0 <= y_mapped < h:
+                output[y_mapped, x_mapped] = img_bgr[yy, xx]
+    return output
+
+
+def pad_image(img_bgr, move_x, move_y):
+    """
+    依 move_x, move_y 對影像做 zero padding 達到平移目的
+    """
+    move_x = int(round(move_x))
+    move_y = int(round(move_y))
+    if move_x >= 0 and move_y >= 0:
+        padded = np.pad(img_bgr, ((move_y, 0), (move_x, 0), (0, 0)), 'constant')
+    elif move_x >= 0 and move_y < 0:
+        padded = np.pad(img_bgr, ((0, -move_y), (move_x, 0), (0, 0)), 'constant')
+    elif move_x < 0 and move_y >= 0:
+        padded = np.pad(img_bgr, ((move_y, 0), (0, -move_x), (0, 0)), 'constant')
+    else:
+        padded = np.pad(img_bgr, ((0, -move_y), (0, -move_x), (0, 0)), 'constant')
+    return padded
+
+
+def blend_two_images(shift_vec, ref_match, imgA, imgB):
+    """
+    使用 shift_vec(dx, dy) 與簡易線性融合將 imgB 拼接到 imgA
+    """
+    dx, dy = shift_vec
+    if dx < 0:
+        dx = -dx
+        dy = -dy
+        ref_match = (ref_match[1], ref_match[0])
+        imgA, imgB = imgB, imgA
+
+    padA_x = imgB.shape[1] - imgA.shape[1] + ref_match[0][0] - ref_match[1][0]
+    padB_x = ref_match[0][0] - ref_match[1][0]
+    overlap_range = ref_match[1][0] - ref_match[0][0] + imgA.shape[1]
+
+    shiftA = pad_image(imgA, -padA_x, -dy)
+    shiftB = pad_image(imgB, padB_x, dy)
+
+    HH = max(shiftA.shape[0], shiftB.shape[0])
+    WW = max(shiftA.shape[1], shiftB.shape[1])
+    canvasA = np.zeros((HH, WW, 3), dtype=np.float32)
+    canvasB = np.zeros((HH, WW, 3), dtype=np.float32)
+
+    canvasA[:shiftA.shape[0], :shiftA.shape[1]] = shiftA
+    canvasB[:shiftB.shape[0], :shiftB.shape[1]] = shiftB
+
+    result = np.zeros((HH, WW, 3), dtype=np.float32)
+    overlap_counter = 0
+
+    for cc in range(WW):
+        colA = canvasA[:, cc, :]
+        colB = canvasB[:, cc, :]
+        countA = np.count_nonzero(colA)
+        countB = np.count_nonzero(colB)
+
+        if (countA > 0) and (countB > 0):
+            alpha = overlap_counter / overlap_range if overlap_range != 0 else 0
+            overlap_counter += 1
+            result[:, cc, :] = (1 - alpha) * colA + alpha * colB
+        elif (countA > 0):
+            result[:, cc, :] = colA
+        elif (countB > 0):
+            result[:, cc, :] = colB
+        else:
+            pass
+
+    return result.astype(np.uint8)
+
+
+#############################
+# 3) Rectangling
+#############################
+def rectangle_crop(img):
+    """
+    將輸入影像 (BGR) 中非黑像素的最小邊界找出來，做裁切 (Rectangling)
+    如果整張都黑，維持原樣返回
+    """
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    nonzeros = np.nonzero(gray)
+    if len(nonzeros[0]) == 0:
+        # 全黑圖
+        return img
+    ys, xs = nonzeros
+    y_min, y_max = ys.min(), ys.max()
+    x_min, x_max = xs.min(), xs.max()
+
+    return img[y_min:y_max+1, x_min:x_max+1]
+
+#############################
+# 4) 主程式
+#############################
+def run_panorama():
+    """
+    主程式：互動式要求用戶輸入資料夾與 pano.txt，然後執行全景拼接
+    使用 SIFT 進行特徵偵測，再根據第一張 & 最後一張 y差做 drift 修正後拼接
+    """
+    folder_path = input("請輸入圖片資料夾位置 (預設為 .) ：").strip()
+    if folder_path == '':
+        folder_path = '.'
+    if not (folder_path.endswith('/') or folder_path.endswith('\\')):
+        folder_path += '/'
+
+    pano_file = input("請輸入 pano.txt 檔案路徑 (若同資料夾僅輸入檔名)：").strip()
+    if pano_file == '':
+        pano_file = folder_path + "pano.txt"
+
+    # 讀取 pano.txt
+    img_paths, focals = read_pano_data(pano_file)
+    if len(img_paths) == 0:
+        print("在 pano.txt 中找不到任何有效條目，請檢查格式。")
+        return
+
+    # # 讀第一張圖
+    # first_image_path = img_paths[0]
+    # if not os.path.exists(first_image_path):
+    #     first_image_path = folder_path + os.path.basename(first_image_path)
+    #
+    # base_img = cv2.imread(first_image_path)
+    # if base_img is None:
+    #     print(f"無法讀取：{first_image_path}")
+    #     return
+    #
+    # # 第1張 圓柱投影
+    # base_focal = focals[0]
+    # mosaic = cylindrical_projection(base_img, base_focal)
+    #
+    # total_cnt = len(img_paths)
+    # for idx in range(1, total_cnt):
+    #     print(f"拼接中：第 {idx+1} / {total_cnt} 張...")
+    #
+    #     another_path = img_paths[idx]
+    #     if not os.path.exists(another_path):
+    #         another_path = folder_path + os.path.basename(another_path)
+    #
+    #     next_img = cv2.imread(another_path)
+    #     if next_img is None:
+    #         print(f"無法讀取：{another_path}，略過。")
+    #         continue
+    #
+    #     # 做圓柱投影
+    #     this_focal = focals[idx]
+    #     cyl = cylindrical_projection(next_img, this_focal)
+    #
+    #     # 高度對齊
+    #     diff_y = mosaic.shape[0] - cyl.shape[0]
+    #     if diff_y != 0:
+    #         cyl = pad_image(cyl, 0, diff_y)
+    #
+    #     shift_xy, matched_pair = compute_shift_sift(mosaic, cyl, ransac_thr=3, desc_thresh=25000)
+    #
+    #     # 縫合
+    #     mosaic = blend_two_images(shift_xy, matched_pair, mosaic, cyl)
+    start = time.time()
+    images = []
+
+    # 讀取所有影像 & 做圓柱投影
+    for p in img_paths:
+        full_p = p if os.path.exists(p) else os.path.join(folder_path, os.path.basename(p))
+        img = cv2.imread(full_p)
+        if img is None:
+            print(f"無法讀取：{full_p}")
+            images.append(None)
+            continue
+        images.append(img)
+    print("讀取影像完成，總共 %d 張。" % len(images))
+
+    # 先把每張做圓柱投影
+    cyl_imgs = []
+    for i, (img, f) in enumerate(zip(images, focals)):
+        if img is None:
+            cyl_imgs.append(None)
+            continue
+        cyl = cylindrical_projection(img, f)
+        cyl_imgs.append(cyl)
+
+    # 第一次迴圈：計算相鄰影像的 shift，但不直接拼接
+    # shift_list[i] 表示第 i+1 張 (cyl_imgs[i+1]) 相對第 i 張 (cyl_imgs[i]) 的 (dx, dy)
+    shift_list = []
+    matched_pairs = []
+
+    mosaic_height_list = [cyl_imgs[0].shape[0]]  # 記錄拼接後實際高度(可選)
+
+    second = time.time()
+    print("Timer: 讀取影像 %.2f 秒" % (second - start))
+
+    #############################
+    # 5) End to end alignment (去除圖片drift高低差問題)
+    #############################
+    for i in range(len(cyl_imgs) - 1):
+        if cyl_imgs[i] is None or cyl_imgs[i + 1] is None:
+            shift_list.append((0, 0))
+            matched_pairs.append(((0, 0), (0, 0)))
+            mosaic_height_list.append(mosaic_height_list[-1])
+            continue
+
+        # 若高不同，先做 padding
+        diff_y = cyl_imgs[i].shape[0] - cyl_imgs[i + 1].shape[0]
+        if diff_y != 0:
+            cyl_imgs[i + 1] = pad_image(cyl_imgs[i + 1], 0, diff_y)
+
+        print("拼接中：第 %d / %d 張..." % (i + 1, len(cyl_imgs) - 1))
+        shift_xy, matched_pair = compute_shift_sift(cyl_imgs[i], cyl_imgs[i + 1], ransac_thr=3, desc_thresh=25000)
+        shift_list.append(shift_xy)
+        matched_pairs.append(matched_pair)
+
+        # 這裡可選擇記錄「拼好之後的高度」，但要真的拼才知道。範例就先略過
+
+    third = time.time()
+    print("Timer: 計算 shift %.2f 秒" % (third - second))
+    # 計算「累計」移動 y
+    # acc_shifts[i] = 第 i 張影像(相對於第 0 張) 的累計 shift
+    # 其中 acc_shifts[0] = (0,0)
+    acc_shifts = [(0, 0)]
+    for i in range(len(shift_list)):
+        prev_x, prev_y = acc_shifts[i]
+        cur_dx, cur_dy = shift_list[i]
+        acc_shifts.append((prev_x + cur_dx, prev_y + cur_dy))
+
+    # 現在 acc_shifts[-1] 就是「最後一張相對第一張」的累計移動
+    final_dx, final_dy = acc_shifts[-1]
+
+    # 假設我們只想修正 y 的 drift (高度差)
+    # => average_drift = final_dy / (N-1)  (N=len(images))
+    N = len(images)
+    if N > 1:
+        average_drift = final_dy / (N - 1)
+    else:
+        average_drift = 0
+
+    # 我們將 shift_list[i] 的 dy 依比例扣除 i+1 的 drift
+    # 例如第 i 次移動對應「從 i → i+1」的影像
+    # 從理論上：acc_shifts[i+1].y = acc_shifts[i].y + shift_list[i].y
+    # drift 分配 => shift_list[i].y_new = shift_list[i].y - (i+1)* (average_drift / (N-1))?
+    # 但比較簡單：我們直接從acc_shifts計算 ref
+    # 這裡示範最直覺的方式：
+    new_shift_list = []
+    for i, (dx, dy) in enumerate(shift_list):
+        # i 代表第 i 次移動 (i=0 => 1st move => 0->1)
+        # 調整後：dy_new = dy - (i+1)*average_drift/ ???
+        # 其實最簡單：把 "average_drift" 分攤到每一段 => each dy -= average_drift
+        dy_new = dy - average_drift
+        new_shift_list.append((dx, dy_new))
+
+    # ============= 第二次迴圈：真正拼接 =============
+    # 用 new_shift_list 重新 build 全景
+    mosaic = cyl_imgs[0].copy()
+    for i in range(1, N):
+        if cyl_imgs[i] is None:
+            continue
+        # 先保證高度
+        diff_y = mosaic.shape[0] - cyl_imgs[i].shape[0]
+        if diff_y != 0:
+            cyl_imgs[i] = pad_image(cyl_imgs[i], 0, diff_y)
+
+        shift_xy = new_shift_list[i - 1]
+        pair = matched_pairs[i - 1]
+        mosaic = blend_two_images(shift_xy, pair, mosaic, cyl_imgs[i])
+        print("拼接中：第 %d / %d 張..." % (i, N - 1))
+
+    result_img = rectangle_crop(mosaic)
+    save_path = os.path.join(folder_path, "panoroma.jpg")
+    cv2.imwrite(save_path, result_img)
+    print(f"全景拼接完成，輸出：{save_path}")
+    end = time.time()
+    print("總共花費 %.2f 秒" % (end - start))
 
 if __name__ == "__main__":
-
-    fileNameList = [('prtn01', 'prtn00')]
-    for fname1, fname2 in fileNameList:
-        # Read the img file
-        src_path = "test_images/"
-        fileName1 = fname1
-        fileName2 = fname2
-        img_left = cv2.imread(src_path + fileName1 + ".jpg",0)
-        img_right = cv2.imread(src_path + fileName2 + ".jpg",0)
-
-        # The stitch object to stitch the image
-        blending_mode = "linearBlending"  # three mode - noBlending、linearBlending、linearBlendingWithConstant
-        stitcher = Stitcher()
-        warp_img = stitcher.stitch([img_left, img_right], blending_mode)
-
-        # plot the stitched image
-        plt.figure(13)
-        plt.title("warp_img")
-        plt.imshow(warp_img[:, :, ::-1].astype(int))
-
-        # save the stitched iamge
-        saveFilePath = "img/u4.jpg".format(fileName1, fileName2, blending_mode)
-        cv2.imwrite(saveFilePath, warp_img)
+    run_panorama()
