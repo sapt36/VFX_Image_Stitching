@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPixmap, QImage, QFont
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import sift_impl  # 假設你的 SIFT 實作存於 sift_impl.py
+import sift_impl
 
 def cvimg_to_qpixmap(img, max_width=None, max_height=None):
     """將 OpenCV 影像 (灰階或 BGR) 轉為 Qt QPixmap，並可選擇縮放至最大尺寸"""
@@ -155,6 +155,6 @@ class SIFTVisualizer(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = SIFTVisualizer("../test_images_parrington/prtn01.jpg", sigma=1.6, assumed_blur=0.5)
+    window = SIFTVisualizer("test_images_parrington/prtn01.jpg", sigma=1.6, assumed_blur=0.5)
     window.show()
     sys.exit(app.exec_())
