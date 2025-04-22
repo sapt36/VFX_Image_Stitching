@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import math
 import time
-from sift_impl import computeKeypointsAndDescriptors
+from sift_impl import compute_keypoints_and_descriptors
 
 
 #############################
@@ -11,7 +11,7 @@ from sift_impl import computeKeypointsAndDescriptors
 #############################
 def read_pano_data(pano_file_path):
     """
-    讀取 pano.txt 資料
+    讀取 pano.txt 資料 (made by AutoStitch)
 
     流程：
       1. 尋找包含 .jpg 或 .png 的行 → 當作影像路徑
@@ -56,8 +56,8 @@ def compute_shift_sift(imgA, imgB, ransac_thr=3, desc_thresh=25000):
     :param desc_thresh: 用來判斷特徵向量距離（L2距離）的閾值
     """
     # 1) 計算 SIFT Keypoints & Descriptors
-    kpsA, descA = computeKeypointsAndDescriptors(imgA)
-    kpsB, descB = computeKeypointsAndDescriptors(imgB)
+    kpsA, descA = compute_keypoints_and_descriptors(imgA)
+    kpsB, descB = compute_keypoints_and_descriptors(imgB)
 
     # 2) 做最近鄰匹配
     matches = []
@@ -79,11 +79,11 @@ def compute_shift_sift(imgA, imgB, ransac_thr=3, desc_thresh=25000):
             matches.append(((xA, yA), (xB, yB)))
 
     # 3) RANSAC => best shift
-    best_move, best_pair = simple_ransac(matches, dist_sq_thresh=ransac_thr)
+    best_move, best_pair = ransac(matches, dist_sq_thresh=ransac_thr)
     return best_move, best_pair
 
 
-def simple_ransac(matches, dist_sq_thresh=3):
+def ransac(matches, dist_sq_thresh=3):
     """
     用平移 (dx, dy) 做投票式 RANSAC
     """
@@ -221,6 +221,7 @@ def rectangle_crop(img):
 
     return img[y_min:y_max+1, x_min:x_max+1]
 
+
 #############################
 # 4) 主程式
 #############################
@@ -245,46 +246,6 @@ def run_panorama():
         print("在 pano.txt 中找不到任何有效條目，請檢查格式。")
         return
 
-    # # 讀第一張圖
-    # first_image_path = img_paths[0]
-    # if not os.path.exists(first_image_path):
-    #     first_image_path = folder_path + os.path.basename(first_image_path)
-    #
-    # base_img = cv2.imread(first_image_path)
-    # if base_img is None:
-    #     print(f"無法讀取：{first_image_path}")
-    #     return
-    #
-    # # 第1張 圓柱投影
-    # base_focal = focals[0]
-    # mosaic = cylindrical_projection(base_img, base_focal)
-    #
-    # total_cnt = len(img_paths)
-    # for idx in range(1, total_cnt):
-    #     print(f"拼接中：第 {idx+1} / {total_cnt} 張...")
-    #
-    #     another_path = img_paths[idx]
-    #     if not os.path.exists(another_path):
-    #         another_path = folder_path + os.path.basename(another_path)
-    #
-    #     next_img = cv2.imread(another_path)
-    #     if next_img is None:
-    #         print(f"無法讀取：{another_path}，略過。")
-    #         continue
-    #
-    #     # 做圓柱投影
-    #     this_focal = focals[idx]
-    #     cyl = cylindrical_projection(next_img, this_focal)
-    #
-    #     # 高度對齊
-    #     diff_y = mosaic.shape[0] - cyl.shape[0]
-    #     if diff_y != 0:
-    #         cyl = pad_image(cyl, 0, diff_y)
-    #
-    #     shift_xy, matched_pair = compute_shift_sift(mosaic, cyl, ransac_thr=3, desc_thresh=25000)
-    #
-    #     # 縫合
-    #     mosaic = blend_two_images(shift_xy, matched_pair, mosaic, cyl)
     start = time.time()
     images = []
 
