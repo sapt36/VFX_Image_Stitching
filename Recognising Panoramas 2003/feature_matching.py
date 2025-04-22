@@ -1,7 +1,7 @@
 import cv2
 
 # 匯入 SIFT 實作
-from sift_impl import computeKeypointsAndDescriptors
+from sift_impl import compute_keypoints_and_descriptors
 
 
 def extract_sift_features(img):
@@ -11,7 +11,7 @@ def extract_sift_features(img):
     # 確保為灰階 float32 圖片
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    keypoints, descriptors = computeKeypointsAndDescriptors(img)
+    keypoints, descriptors = compute_keypoints_and_descriptors(img)
     return keypoints, descriptors
 
 

@@ -92,14 +92,4 @@ def find_panoramas(matched_pairs):
             panoramas.append(sorted(comp))
     return panoramas
 
-# ===== 範例使用 =====
-if __name__ == "__main__":
-    # 假設 descriptors_list, keypoints_list 已由 SIFT 階段生成
-    descriptors_list = [...]     # list of ndarray or None
-    keypoints_list   = [...]     # list of list(cv2.KeyPoint)
 
-    matches = match_and_verify_images(descriptors_list, keypoints_list)
-    print("接受的影像對：", matches)
-
-    panoramas = find_panoramas(matches)
-    print("偵測到的全景序列：", panoramas)

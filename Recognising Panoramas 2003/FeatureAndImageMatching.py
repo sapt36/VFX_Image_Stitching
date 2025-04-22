@@ -1,7 +1,7 @@
 import cv2
 
 # 1. 匯入 SIFT 實作
-from sift_impl import computeKeypointsAndDescriptors
+from sift_impl import compute_keypoints_and_descriptors
 
 # 2. 匯入影像匹配與驗證的函式
 from image_matching import match_and_verify_images, find_panoramas
@@ -14,7 +14,7 @@ def extract_sift_features(img):
     if len(img.shape) == 3:
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # 呼叫自訂的 SIFT 演算法
-    keypoints, descriptors = computeKeypointsAndDescriptors(img)
+    keypoints, descriptors = compute_keypoints_and_descriptors(img)
     return keypoints, descriptors
 
 def match_features(desc1, desc2, k=4):
