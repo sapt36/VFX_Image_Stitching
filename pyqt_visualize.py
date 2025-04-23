@@ -11,6 +11,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import sift_impl
 import warnings
+import matplotlib.pyplot as plt
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
@@ -35,6 +36,61 @@ def cvimg_to_qpixmap(img, max_width=None, max_height=None):
             Qt.SmoothTransformation
         )
     return pix
+
+
+def draw_feature_points_return_disp(img, keypoints, point_color='red', arrow_color='yellow', scale=0.5):
+    """
+    回傳一張包含特徵點的可視化影像 (disp)，而非直接顯示到螢幕上。
+
+    :param img:         原始影像（BGR、RGB 或灰階）
+    :param keypoints:   cv2.KeyPoint 列表
+    :param point_color: 特徵點的顏色 (Matplotlib 顏色名稱)
+    :param arrow_color: 方向箭頭顏色 (Matplotlib 顏色名稱)
+    :param scale:       箭頭長度縮放倍率
+    :return:            disp (ndarray)，包含繪製結果的影像（BGR格式）
+    """
+    # 1) 若為灰階，轉為 RGB；若是 BGR，也轉為 RGB 以正確顯示色彩 (Matplotlib預設視為RGB)
+    if len(img.shape) == 2:
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.shape[2] == 3:
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    else:
+        # 假設第三維不是3則可能已是RGB或其他情況，簡單做copy
+        img_rgb = img.copy()
+
+    # 2) 建立 figure，並在其中繪製影像與特徵點
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.imshow(img_rgb)
+    ax.set_axis_off()  # 不顯示軸線
+
+    for kp in keypoints:
+        x, y = kp.pt
+        # 畫出特徵點的位置
+        ax.plot(x, y, 'o', color=point_color, markersize=2)
+
+        # 若 keypoint 有方向資訊，則畫箭頭
+        if kp.angle != -1:
+            angle_rad = np.deg2rad(kp.angle)
+            dx = np.cos(angle_rad) * kp.size / scale
+            dy = np.sin(angle_rad) * kp.size / scale
+            ax.arrow(x, y, dx, dy,
+                     color=arrow_color,
+                     head_width=1.5, head_length=2)
+
+    ax.set_title("Feature Points with Orientation")
+
+    # 3) 使 Matplotlib 將圖渲染到快取（非顯示到螢幕），再讀回成陣列
+    fig.canvas.draw()
+    w, h = fig.canvas.get_width_height()  # 取得圖像寬高(像素)
+    buf = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    buf = buf.reshape(h, w, 3)  # 形狀 (height, width, 3)，RGB 格式
+
+    # 4) Matplotlib 繪製完後，可關閉 figure
+    plt.close(fig)
+
+    # 5) 將 RGB 轉為 BGR，以便後續可用 cv2.imshow 或 cv2.imwrite 等
+    disp = cv2.cvtColor(buf, cv2.COLOR_RGB2BGR)
+    return disp
 
 
 class SIFTVisualizer(QMainWindow):
@@ -132,8 +188,7 @@ class SIFTVisualizer(QMainWindow):
         draw_img = img if img is not None else self.base_image
         # 防止 draw_img 為 float或過大時無法正常畫
         disp_img = (draw_img / np.max(draw_img) * 255).astype('uint8')
-        disp = cv2.drawKeypoints(disp_img, keypoints, None,
-                                 flags=cv2.DrawMatchesFlags_DEFAULT)
+        disp = draw_feature_points_return_disp(disp_img, keypoints, scale=1)
 
         # 顯示鍵點影像
         label = QLabel()
