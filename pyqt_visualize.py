@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
-    QLabel, QScrollArea, QGridLayout, QSizePolicy
+    QLabel, QScrollArea, QGridLayout
 )
 from PyQt5.QtGui import QPixmap, QImage, QFont
 from PyQt5.QtCore import Qt
@@ -188,7 +188,7 @@ class SIFTVisualizer(QMainWindow):
         draw_img = img if img is not None else self.base_image
         # 防止 draw_img 為 float或過大時無法正常畫
         disp_img = (draw_img / np.max(draw_img) * 255).astype('uint8')
-        disp = draw_feature_points_return_disp(disp_img, keypoints, scale=1)
+        disp = draw_feature_points_return_disp(disp_img, keypoints, scale=3)
 
         # 顯示鍵點影像
         label = QLabel()
