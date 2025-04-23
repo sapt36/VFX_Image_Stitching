@@ -378,18 +378,45 @@ def blend_two_images(shift_vec, ref_match, imgA, imgB):
 #############################
 # (D) Rectangling (裁切全黑區域)
 #############################
-def rectangle_crop(img):
+def rectangle_crop(img, black_threshold=0, extra_margin=15):
     """
-    將輸入影像 (BGR) 中非黑像素的最小邊界找出來，做裁切 (Rectangling)
-    如果整張都黑，維持原樣返回
+    將輸入影像 (BGR) 中灰階大於 black_threshold 的像素視為有效區域，
+    找到其最小外框並裁切，若全圖皆低於該值(幾乎全黑)就原圖返回。
+    可另外指定 extra_margin，在已確定的外框內再多切除 extra_margin 像素。
+
+    :param img: 輸入彩色影像 (H, W, 3)
+    :param black_threshold: int，若 gray <= black_threshold 視為「黑」
+    :param extra_margin:    int，再多切除的邊緣像素(往內)
+
+    :return: 裁切後之影像
     """
+    h, w = img.shape[:2]
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    nonzeros = np.nonzero(gray)
-    if len(nonzeros[0]) == 0:
+
+    # 1) 根據 threshold 做 mask：> threshold 才算有效
+    mask = (gray > black_threshold)
+
+    # 2) 找出 mask 為 True 的像素座標
+    coords = np.where(mask)
+    if coords[0].size == 0:
+        # 全圖都小於等於 threshold，視為全黑，直接回傳原圖
         return img
-    ys, xs = nonzeros
-    y_min, y_max = ys.min(), ys.max()
-    x_min, x_max = xs.min(), xs.max()
+
+    # 3) 取得最小外框
+    y_min, y_max = coords[0].min(), coords[0].max()
+    x_min, x_max = coords[1].min(), coords[1].max()
+
+    # 4) 額外留白邊界(可往內切)
+    y_min = max(0, y_min + extra_margin)
+    y_max = min(h - 1, y_max - extra_margin)
+    x_min = max(0, x_min + extra_margin)
+    x_max = min(w - 1, x_max - extra_margin)
+
+    if y_min > y_max or x_min > x_max:
+        # 調整後的範圍無效，直接回傳原圖或空影像
+        return img
+
+    # 5) 裁切
     return img[y_min:y_max+1, x_min:x_max+1]
 
 #############################
