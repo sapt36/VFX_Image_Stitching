@@ -270,7 +270,7 @@ def ransac(matches, dist_sq_thresh=3):
             best_pair = matches[i]
     return best_move, best_pair
 
-def compute_shift_harris(imgA, imgB, ransac_thr=3, desc_thresh=1.0):
+def compute_shift_harris(imgA, imgB, ransac_thr, desc_thresh):
     """
     以 HarrisCorner + 簡易描述子 + 簡單匹配 + RANSAC計算平移量
     """
