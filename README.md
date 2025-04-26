@@ -1,16 +1,17 @@
 # Digital-Visual-Effects---Image-Stitching
 
-## code/
+## code:
 1. `image_stitching_harris.py`
 2. `image_stitching_sift.py`
 3. `sift_impl.py`
 4. `sift_visualizeUI.py`
 
-## requirements/
+## requirements:
 - matplotlib                3.10.1 
 - numpy                     2.2.4
 - opencv-python             4.11.0.86
 - PyQt5                     5.15.11
+
 ---
 
 ### 1. `image_stitching_harris.py`
