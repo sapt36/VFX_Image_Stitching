@@ -420,7 +420,7 @@ def rectangle_crop(img, black_threshold=0, extra_margin=15):
     return img[y_min:y_max+1, x_min:x_max+1]
 
 #############################
-# 4) 主程式
+# E) 主程式
 #############################
 def run_panorama():
     """
