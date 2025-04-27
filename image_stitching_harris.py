@@ -378,7 +378,7 @@ def blend_two_images(shift_vec, ref_match, imgA, imgB):
 #############################
 # (D) Rectangling (裁切全黑區域)
 #############################
-def rectangle_crop(img, black_threshold=0, extra_margin=15):
+def rectangle_crop(img, black_threshold, extra_margin):
     """
     將輸入影像 (BGR) 中灰階大於 black_threshold 的像素視為有效區域，
     找到其最小外框並裁切，若全圖皆低於該值(幾乎全黑)就原圖返回。
@@ -433,7 +433,7 @@ def run_panorama():
     if not (folder_path.endswith('/') or folder_path.endswith('\\')):
         folder_path += '/'
 
-    pano_file = input("請輸入 pano.txt 檔案路徑 (若同資料夾僅輸入檔名)：").strip()
+    pano_file = input("請輸入 pano.txt 檔案路徑 (在圖片資料夾內可直接按enter)：").strip()
     if pano_file == '':
         pano_file = folder_path + "pano.txt"
 
@@ -538,7 +538,8 @@ def run_panorama():
         return
 
     # 最後裁切
-    result_img = rectangle_crop(mosaic)
+    margin = input("請輸入裁切邊界 (預設 15)：").strip()
+    result_img = rectangle_crop(mosaic, 0, int(margin) if margin.isdigit() else 15)
     save_path = os.path.join(folder_path, "panoroma_harris.jpg")
     cv2.imwrite(save_path, result_img)
     print(f"全景拼接完成，輸出：{save_path}")
