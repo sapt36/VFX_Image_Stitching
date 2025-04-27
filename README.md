@@ -5,6 +5,7 @@
 2. `image_stitching_sift.py`
 3. `sift_impl.py`
 4. `sift_visualizeUI.py`
+
 ```bash
 pip install opencv-python numpy matplotlib PyQt5
 ```
@@ -28,7 +29,26 @@ pip install opencv-python numpy
 ```bash
 python image_stitching_harris.py
 ```
-程式啟動後會要求輸入**圖片資料夾路徑**，資料夾內應有一個 `pano.txt`，裡面寫每張圖片路徑和焦距。 (由 autostitch 生成即可)
+程式啟動後會要求輸入**圖片資料夾路徑**及結束前要求輸入**裁切邊界大小**，圖片資料夾內應有一個 `pano.txt`(由 autostitch 生成)，裡面寫每張圖片路徑和焦距。
+執行範例如下：
+```bash
+C:\Users\853uj\anaconda3\python.exe C:\Users\853uj\PyCharmProject\DVE_HW2\image_stitching_harris.py 
+請輸入圖片資料夾位置 (預設為 .) ：C:\Users\853uj\PyCharmProject\DVE_HW2\wind
+請輸入 pano.txt 檔案路徑 (在圖片資料夾內可直接按enter)：
+已從 pano.txt 讀取 1 張影像路徑及其焦距。
+圓柱投影完成，總共 1 張影像。
+Timer: 0.40 秒 讀取影像、圓柱投影
+Timer: 0.00 秒 Harris角點 + RANSAC 完成
+請輸入裁切邊界 (預設 15)：24
+全景拼接完成，輸出：C:\Users\853uj\PyCharmProject\DVE_HW2\wind/panoroma_harris.jpg
+總共花費 5.76 秒
+
+Process finished with exit code 0
+```
+裁切邊界大小建議
+- `wind` = 24
+- `parrington` = 15
+- `grail` = 17
 
 ---
 
@@ -51,7 +71,7 @@ pip install opencv-python numpy
 ```bash
 python image_stitching_sift.py
 ```
-同樣，啟動後會問你**圖片資料夾位置**，要有 `pano.txt`。
+同樣，啟動後會問你**圖片資料夾位置**，要有 `pano.txt`，結束前會問你**裁切邊界大小**，請參考`image_stitching_harris.py`的範例。
 
 ---
 
