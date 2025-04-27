@@ -381,7 +381,7 @@ def run_panorama():
         print("實際拼接：第 %d / %d 張..." % (i, N - 1))
 
     result_img = rectangle_crop(mosaic)
-    save_path = os.path.join(folder_path, "panoroma.jpg")
+    save_path = os.path.join(folder_path, "panoroma_sift.jpg")
     cv2.imwrite(save_path, result_img)
     print(f"全景拼接完成，輸出：{save_path}")
     end = time.time()
