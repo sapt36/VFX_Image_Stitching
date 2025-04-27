@@ -205,7 +205,7 @@ def blend_two_images(shift_vec, ref_match, imgA, imgB):
 #############################
 # 3) Rectangling
 #############################
-def rectangle_crop(img, black_threshold=0, extra_margin=15):
+def rectangle_crop(img, black_threshold, extra_margin):
     """
     將輸入影像 (BGR) 中灰階大於 black_threshold 的像素視為有效區域，
     找到其最小外框並裁切，若全圖皆低於該值(幾乎全黑)就原圖返回。
@@ -233,11 +233,11 @@ def rectangle_crop(img, black_threshold=0, extra_margin=15):
     y_min, y_max = coords[0].min(), coords[0].max()
     x_min, x_max = coords[1].min(), coords[1].max()
 
-    # 4) 額外留白邊界(可往內切)
+    # 4) 額外留白邊界(只切上下邊界)
     y_min = max(0, y_min + extra_margin)
     y_max = min(h - 1, y_max - extra_margin)
-    x_min = max(0, x_min + extra_margin)
-    x_max = min(w - 1, x_max - extra_margin)
+    # x_min = max(0, x_min + extra_margin)
+    # x_max = min(w - 1, x_max - extra_margin)
 
     if y_min > y_max or x_min > x_max:
         # 調整後的範圍無效，直接回傳原圖或空影像
@@ -380,7 +380,8 @@ def run_panorama():
         mosaic = blend_two_images(shift_xy, pair, mosaic, cyl_imgs[i])
         print("實際拼接：第 %d / %d 張..." % (i, N - 1))
 
-    result_img = rectangle_crop(mosaic)
+    margin = input("請輸入裁切邊界 (預設 15)：").strip()
+    result_img = rectangle_crop(mosaic, 0, int(margin) if margin.isdigit() else 15)
     save_path = os.path.join(folder_path, "panoroma_sift.jpg")
     cv2.imwrite(save_path, result_img)
     print(f"全景拼接完成，輸出：{save_path}")

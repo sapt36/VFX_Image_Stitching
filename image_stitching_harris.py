@@ -406,11 +406,11 @@ def rectangle_crop(img, black_threshold, extra_margin):
     y_min, y_max = coords[0].min(), coords[0].max()
     x_min, x_max = coords[1].min(), coords[1].max()
 
-    # 4) 額外留白邊界(可往內切)
+    # 4) 額外留白邊界(只切上下邊界)
     y_min = max(0, y_min + extra_margin)
     y_max = min(h - 1, y_max - extra_margin)
-    x_min = max(0, x_min + extra_margin)
-    x_max = min(w - 1, x_max - extra_margin)
+    # x_min = max(0, x_min + extra_margin)
+    # x_max = min(w - 1, x_max - extra_margin)
 
     if y_min > y_max or x_min > x_max:
         # 調整後的範圍無效，直接回傳原圖或空影像
