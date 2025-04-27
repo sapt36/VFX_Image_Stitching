@@ -5,13 +5,9 @@
 2. `image_stitching_sift.py`
 3. `sift_impl.py`
 4. `sift_visualizeUI.py`
-
-## requirements:
-- matplotlib                3.10.1 
-- numpy                     2.2.4
-- opencv-python             4.11.0.86
-- PyQt5                     5.15.11
-
+```bash
+pip install opencv-python numpy matplotlib PyQt5
+```
 ---
 
 ### 1. `image_stitching_harris.py`
