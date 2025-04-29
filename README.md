@@ -33,20 +33,22 @@ python image_stitching_harris.py
 執行範例如下：
 ```bash
 C:\Users\853uj\anaconda3\python.exe C:\Users\853uj\PyCharmProject\DVE_HW2\image_stitching_harris.py 
-請輸入圖片資料夾位置 (預設為 .) ：C:\Users\853uj\PyCharmProject\DVE_HW2\wind
+請輸入圖片資料夾位置 (預設為 .) ：C:\Users\853uj\PyCharmProject\DVE_HW2\out
 請輸入 pano.txt 檔案路徑 (在圖片資料夾內可直接按enter)：
-已從 pano.txt 讀取 1 張影像路徑及其焦距。
-圓柱投影完成，總共 1 張影像。
-Timer: 0.40 秒 讀取影像、圓柱投影
-Timer: 0.00 秒 Harris角點 + RANSAC 完成
-請輸入裁切邊界 (預設 15)：24
-全景拼接完成，輸出：C:\Users\853uj\PyCharmProject\DVE_HW2\wind/panoroma_harris.jpg
-總共花費 5.76 秒
+已從 pano.txt 讀取 2 張影像路徑及其焦距。
+圓柱投影完成，總共 2 張影像。
+Timer: 0.59 秒 讀取影像、圓柱投影
+拼接中：第 1 / 1 張...
+Timer: 0.74 秒 Harris角點 + RANSAC 完成
+實際拼接：第 1 / 1 張...
+請輸入裁切邊界 (預設 15)：30
+全景拼接完成，輸出：C:\Users\853uj\PyCharmProject\DVE_HW2\out/panoroma_harris.jpg
+總共花費 4.32 秒
 
 Process finished with exit code 0
 ```
 裁切邊界大小建議
-- `wind` = 24
+- `out` = 30
 - `parrington` = 15
 - `grail` = 17
 
