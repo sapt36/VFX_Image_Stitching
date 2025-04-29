@@ -46,7 +46,7 @@ def generate_base_image(image, sigma, assumed_blur):
     """
     生成基底影像：將輸入影像上採樣 2 倍並應用高斯模糊
     """
-    print('Generate Base Image...')
+    # print('Generate Base Image...')
     if sigma is None:
         sigma = 1.6
     # 插值放大
@@ -67,7 +67,7 @@ def generate_gaussian_kernels(sigma, num_intervals):
     """
     生成每個尺度的高斯核標準差
     """
-    print('Generate Gaussian Kernels...')
+    # print('Generate Gaussian Kernels...')
     num_images_per_octave = num_intervals + 3
     k = 2 ** (1. / num_intervals)
     kernels = np.zeros(num_images_per_octave)
@@ -83,7 +83,7 @@ def generate_gaussian_images(image, num_octaves, gaussian_kernels):
     """
     生成高斯金字塔，每個 octave 分別模糊後再下採樣
     """
-    print('Generate Gaussian Images...')
+    # print('Generate Gaussian Images...')
     pyramid = []
     for _ in range(num_octaves):
         octave_imgs = [image]
@@ -101,7 +101,7 @@ def generate_DoG_images(gaussian_images):
     """
     生成差分金字塔 (DoG)，方便極值檢測
     """
-    print('Generate DoG Images...')
+    # print('Generate DoG Images...')
     dog_pyr = []
     for octave in gaussian_images:
         dogs = []
@@ -118,7 +118,7 @@ def find_scale_space_extrema(gaussian_images, dog_images, num_intervals, sigma, 
     """
     在 DoG 金字塔中尋找尺度空間極值作為候選鍵點
     """
-    print('Find Scale Space Extrema...')
+    # print('Find Scale Space Extrema...')
     thresh = np.floor(0.5 * contrast_threshold / num_intervals * 255)
     keypoints = []
     for o, dogs in enumerate(dog_images):
@@ -364,7 +364,7 @@ def generate_descriptors(keypoints, gaussian_images, window_width=4, num_bins=8,
     根據鍵點位置和方向，在局部窗口內累積梯度直方圖生成 128 維描述子 (每 keypoint 4x4x8)
     改用向量化 + np.add.at，避免了原本 (dy, dx) 的雙層巢狀 for-loop
     """
-    print('Generate Descriptors...')
+    # print('Generate Descriptors...')
     descriptors = []
 
     for kp in keypoints:
