@@ -134,7 +134,7 @@ class SIFTVisualizer(QMainWindow):
         tabs.addTab(self.create_descriptor_tab(self.descriptors), "Descriptor Vector")
         # (6) Feature Matching (可選擇 matching 對象)
         tabs.addTab(
-            self.create_feature_matching_tab("wind/wind01.jpg", "wind/wind02.jpg"),
+            self.create_feature_matching_tab("out/out00.jpg", "out/out01.jpg"),
             "Feature Matching"
         )
 
@@ -312,7 +312,7 @@ class SIFTVisualizer(QMainWindow):
 #####################################################
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # 以 wind01.jpg 示例
-    window = SIFTVisualizer("wind/wind01.jpg", sigma=1.6, assumed_blur=0.5)
+    # 以 out00.jpg 示例
+    window = SIFTVisualizer("out/out00.jpg", sigma=1.6, assumed_blur=0.5)
     window.show()
     sys.exit(app.exec_())
