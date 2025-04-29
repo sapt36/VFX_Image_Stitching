@@ -73,7 +73,28 @@ pip install opencv-python numpy
 ```bash
 python image_stitching_sift.py
 ```
-同樣，啟動後會問你**圖片資料夾位置**，要有 `pano.txt`，結束前會問你**裁切邊界大小**，請參考`image_stitching_harris.py`的範例。
+同樣，啟動後會問你**圖片資料夾位置**，要有 `pano.txt`，結束前會問你**裁切邊界大小**，可參考以下範例。
+```bash
+C:\Users\853uj\anaconda3\python.exe C:\Users\853uj\PyCharmProject\DVE_HW2\image_stitching_sift.py 
+請輸入圖片資料夾位置 (預設為 .) ：C:\Users\853uj\PyCharmProject\DVE_HW2\out
+請輸入 pano.txt 檔案路徑 (若同資料夾僅輸入檔名)：
+已從 pano.txt 讀取 2 張影像路徑及其焦距。
+圓柱投影完成，總共 2 張影像。
+Timer: 0.60 秒 讀取影像、圓柱投影、計算drift
+拼接中：第 1 / 1 張...
+Timer: 50.70 秒 SIFT運算
+實際拼接：第 1 / 1 張...
+請輸入裁切邊界 (預設 15)：30
+全景拼接完成，輸出：C:\Users\853uj\PyCharmProject\DVE_HW2\out/panoroma_sift.jpg
+總共花費 85.18 秒
+
+Process finished with exit code 0
+```
+
+裁切邊界大小建議
+- `out` = 30
+- `parrington` = 15
+- `grail` = 17
 
 ---
 
