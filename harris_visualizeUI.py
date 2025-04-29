@@ -1,5 +1,4 @@
 import sys
-import os
 import cv2
 import numpy as np
 
@@ -7,9 +6,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QLabel, QPushButton, QFileDialog,
     QHBoxLayout, QVBoxLayout, QMessageBox
 )
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QFont
-from PyQt5.QtCore import Qt, QSize
-
+from PyQt5.QtGui import QPixmap, QImage, QFont
 
 #############################
 # 1) Harris + Descriptor + Matching 核心函式
