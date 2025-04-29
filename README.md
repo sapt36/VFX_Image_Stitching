@@ -5,6 +5,7 @@
 2. `image_stitching_sift.py`
 3. `sift_impl.py`
 4. `sift_visualizeUI.py`
+5. `harris_visualizeUI.py`
 
 ```bash
 pip install opencv-python numpy matplotlib PyQt5
@@ -147,14 +148,38 @@ python sift_visualizeUI.py
 ```
 ---
 
+### 5. `harris_visualizeUI.py`
+
+**Dependencies**：
+- `opencv-python`
+- `numpy`
+- `PyQt5`
+
+**安裝指令**：
+```bash
+pip install opencv-python numpy PyQt5
+```
+
+**Run Code**：
+```bash
+python harris_visualizeUI.py
+```
+執行後會打開一個 **PyQt 視窗介面**，讓你可視化：Harris 特徵匹配
+
+```
+可選擇輸入你想匹配的圖片
+```
+---
+
 ### 總整理
 
-| 程式                     | 主要功能         | 需安裝套件                                | 是否直接執行 |
-|:-------------------------|:-------------|:------------------------------------------|:------------|
-| image_stitching_harris.py | Harris 拼接影像  | opencv-python, numpy                      | ✅ |
-| image_stitching_sift.py   | SIFT 拼接影像    | opencv-python, numpy                      | ✅ |
-| sift_impl.py              | SIFT 演算法模組   | opencv-python, numpy                      | ⛔|
-| sift_visualizeUI.py       | SIFT 流程可視化介面 | opencv-python, numpy, matplotlib, PyQt5   | ✅ |
+| 程式                        | 主要功能            | 需安裝套件                                   | 是否直接執行 |
+|:--------------------------|:----------------|:----------------------------------------|:------------|
+| image_stitching_harris.py | Harris 拼接影像     | opencv-python, numpy                    | ✅ |
+| image_stitching_sift.py   | SIFT 拼接影像       | opencv-python, numpy                    | ✅ |
+| sift_impl.py              | SIFT 演算法模組      | opencv-python, numpy                    | ⛔|
+| sift_visualizeUI.py       | SIFT 流程可視化介面    | opencv-python, numpy, matplotlib, PyQt5 | ✅ |
+| harris_visualizeUI.py     | Harris特徵匹配可視化介面 | opencv-python, numpy, PyQt5             | ✅ |
 
 ---
 
